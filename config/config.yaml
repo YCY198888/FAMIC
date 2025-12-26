@@ -1,0 +1,47 @@
+# FAMIC Model Configuration
+# TODO: Update all placeholder values with actual model and dataset parameters
+
+# Model configuration
+model:
+  input_dim: 512  # TODO: Set appropriate input dimension
+  hidden_dim: 256  # TODO: Set appropriate hidden dimension
+  num_classes: 2  # TODO: Set appropriate number of classes
+  # Add other model-specific parameters here
+
+# Model weights configuration
+weights:
+  url: "https://example.com/models/famic_weights.pth"  # TODO: Replace with actual URL
+  checksum: null  # TODO: Add SHA256 checksum when available
+  save_dir: "models"
+  filename: "famic_weights.pth"
+
+# Dataset configuration
+datasets:
+  data_root: "data"
+  dataset1:
+    name: "dataset1"  # TODO: Replace with actual dataset name
+    path: "data/dataset1"  # TODO: Update path
+    num_classes: 2  # TODO: Update
+    input_dim: 512  # TODO: Update
+  dataset2:
+    name: "dataset2"  # TODO: Replace with actual dataset name
+    path: "data/dataset2"  # TODO: Update path
+    num_classes: 2  # TODO: Update
+    input_dim: 512  # TODO: Update
+
+# Evaluation configuration
+evaluation:
+  batch_size: 32
+  device: "auto"  # "auto", "cuda", or "cpu"
+  save_results: true
+  results_dir: "results"
+  class_names: null  # TODO: Add class names if available, e.g., ["Class0", "Class1"]
+
+# Training configuration (if needed for fine-tuning)
+training:
+  learning_rate: 0.001
+  num_epochs: 10
+  batch_size: 32
+  optimizer: "adam"
+  # Add other training parameters as needed
+
