@@ -333,20 +333,6 @@ We propose a fine-grained attention-based multiple instance classification (FAMI
 
 **Keywords**: interpretable sentiment analysis; multiple instance classification; self-attention; relative positional embedding
 
-## Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@article{yang2024famic,
-  title={Interpretable Word-level Context-based Sentiment Analysis},
-  author={Yang, Chenyu and Larson, Eric and Cao, Jing},
-  journal={Journal of Data Science},
-  year={2024},
-  note={Submitted}
-}
-```
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
