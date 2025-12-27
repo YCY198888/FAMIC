@@ -18,7 +18,7 @@ This repository provides tools for evaluating the FAMIC model as described in ou
 
 1. Clone this repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/YCY198888/FAMIC.git
 cd FAMIC
 ```
 
@@ -35,9 +35,11 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### 1. HuggingFace Authentication (if needed)
+### 1. HuggingFace Authentication
 
-If the repository is private or gated, authenticate with HuggingFace:
+**Note**: Authentication is **not required** for the Twitter and Wine datasets used in this repository. The datasets, tokenizers, and model weights are publicly available on HuggingFace.
+
+If you encounter authentication errors or need to access private repositories, you can authenticate with HuggingFace:
 
 ```python
 import os
@@ -141,7 +143,8 @@ FAMIC/
 ├── config/
 │   └── config.yaml           # Configuration file
 ├── notebooks/
-│   └── famic_tutorial.ipynb  # Complete tutorial notebook
+│   ├── famic_tutorial.ipynb       # Complete tutorial notebook (local)
+│   └── famic_tutorial_colab.ipynb # Google Colab version
 ├── examples/
 │   └── example_usage.py      # Example usage script
 ├── data/                     # Dataset cache directory (gitignored)
@@ -232,16 +235,20 @@ Results can be visualized and saved as PNG files.
 
 ## Jupyter Notebook Tutorial
 
-A comprehensive tutorial notebook is available at `notebooks/famic_tutorial.ipynb` that demonstrates:
+Comprehensive tutorial notebooks are available:
+
+- **Local Jupyter**: `notebooks/famic_tutorial.ipynb` - For running locally
+- **Google Colab**: `notebooks/famic_tutorial_colab.ipynb` - Ready to run in Google Colab (automatically clones repository and installs dependencies)
+
+Both notebooks demonstrate:
 
 1. Environment setup and imports
-2. HuggingFace authentication
-3. Loading datasets and tokenizers
-4. Model initialization
-5. Loading pretrained weights
-6. Creating data splits and DataLoaders
-7. Model evaluation
-8. Visualization of results
+2. Loading datasets and tokenizers (no authentication required)
+3. Model initialization
+4. Loading pretrained weights
+5. Creating data splits and DataLoaders
+6. Model evaluation
+7. Visualization of results
 
 ## Cache Management
 
@@ -308,23 +315,50 @@ Modify `src/evaluate.py` to:
 - Change visualization style
 - Add per-class metrics
 
+## Paper
+
+This repository supports the paper submission:
+
+**Interpretable Word-level Context-based Sentiment Analysis**
+
+Chenyu Yang<sup>1</sup>, Eric Larson<sup>2</sup>, and Jing Cao<sup>3,*</sup>
+
+<sup>1</sup>Department of Statistics and Data Science, Southern Methodist University, U.S.A  
+<sup>2</sup>Department of Computer Science, Southern Methodist University, U.S.A  
+<sup>3</sup>Department of Statistics and Data Science, Southern Methodist University, U.S.A
+
+### Abstract
+
+We propose a fine-grained attention-based multiple instance classification (FAMIC) model for interpretable word-level sentiment analysis (SA) using only document-level sentiment labels. By operating at the word level, FAMIC enhances interpretability while maintaining competitive performance in document-level classification. The model generates interpretable outputs such as contextual weighting, word neutrality, and negation cues, offering insights into how context shapes sentiment and how the model arrives at its predictions. FAMIC is built on a straightforward yet effective architecture that combines a multiple instance classification framework with self-attention and positionally encoded self-attention blocks. This design enables the model to capture both local and global contextual dependencies, supporting nuanced sentiment interpretation. We evaluate FAMIC on two sentiment classification datasets and provide an extensive analysis of its interpretability and performance.
+
+**Keywords**: interpretable sentiment analysis; multiple instance classification; self-attention; relative positional embedding
+
 ## Citation
 
 If you use this code in your research, please cite:
 
 ```bibtex
-@article{famic2024,
-  title={FAMIC: [Your Paper Title]},
-  author={[Authors]},
+@article{yang2024famic,
+  title={Interpretable Word-level Context-based Sentiment Analysis},
+  author={Yang, Chenyu and Larson, Eric and Cao, Jing},
   journal={Journal of Data Science},
-  year={2024}
+  year={2024},
+  note={Submitted}
 }
 ```
 
 ## License
 
-[Specify your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+This repository was created with assistance from [Cursor](https://cursor.sh), an AI-powered code editor.
 
 ## Contact
 
-[Add contact information or issue tracker link]
+For questions, issues, or collaboration inquiries, please contact:
+
+- **Chenyu Yang**: chenyuy@smu.edu
+
+For general questions about the repository, please open an issue on [GitHub](https://github.com/YCY198888/FAMIC/issues).
