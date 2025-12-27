@@ -4,10 +4,15 @@ This repository provides tools for evaluating the FAMIC model as described in ou
 
 ## Features
 
-- ✅ Initialize the FAMIC model through PyTorch
-- ✅ Automatically download model weights (URL to be configured)
-- ✅ Load and evaluate on two datasets discussed in the paper
-- ✅ Comprehensive evaluation metrics: Accuracy, Precision, Recall, F1-score, and Confusion Matrix
+- ✅ **Complete FAMIC Model Architecture**: Full PyTorch implementation with all components (Embeds, Sentiment, Mask, Shifter blocks, Synthesizer)
+- ✅ **Automatic Dataset Loading**: Download and cache datasets from HuggingFace (Twitter and Wine datasets)
+- ✅ **Tokenizer Support**: Load Keras tokenizers for text preprocessing
+- ✅ **Pretrained Weights**: Automatic download and loading of pretrained model weights from HuggingFace
+- ✅ **Data Splitting**: Reproducible train/validation/test splits with configurable random seed
+- ✅ **PyTorch DataLoaders**: Efficient data loading with padding and attention masks
+- ✅ **Comprehensive Evaluation**: Accuracy, Precision, Recall, F1-score, Confusion Matrix, and detailed classification reports
+- ✅ **Cache Management**: Utilities to clear cached datasets and tokenizers for fresh downloads
+- ✅ **Jupyter Tutorial**: Complete notebook demonstrating all functionalities
 
 ## Installation
 
@@ -30,67 +35,98 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### 1. Configure Model Weights
+### 1. HuggingFace Authentication (if needed)
 
-Before running evaluation, you need to set up the model weights:
+If the repository is private or gated, authenticate with HuggingFace:
 
-1. **Option A: Automatic Download** (when URL is available)
-   - Update `src/download_weights.py` with the actual download URL
-   - The script will automatically download weights on first run
-
-2. **Option B: Manual Download**
-   - Download model weights from the provided source
-   - Place the weights file in `models/famic_weights.pth` (or update path in config)
-
-### 2. Prepare Datasets
-
-Place your datasets in the following structure:
-```
-data/
-├── dataset1/
-│   ├── test/  # Test split
-│   ├── train/ # Optional: training split
-│   └── val/   # Optional: validation split
-└── dataset2/
-    ├── test/
-    ├── train/
-    └── val/
-```
-
-**TODO**: Update `src/datasets.py` with your actual dataset loading logic.
-
-### 3. Update Configuration
-
-Edit `config/config.yaml` with your specific:
-- Model parameters (input_dim, hidden_dim, num_classes, etc.)
-- Dataset paths and information
-- Evaluation settings
-
-### 4. Run Evaluation
-
-```bash
-python scripts/evaluate.py
-```
-
-Or use the evaluation module directly:
 ```python
-from src.model import FAMIC
-from src.download_weights import get_weights_path
-from src.evaluate import evaluate_on_datasets
+import os
+os.environ['HF_TOKEN'] = 'your_huggingface_token_here'
+```
+
+Or use the CLI:
+```bash
+huggingface-cli login
+```
+
+### 2. Load Dataset and Tokenizer
+
+```python
+from src.datasets import load_dataset_csv, load_tokenizer
+
+# Load dataset (automatically downloads and caches)
+df = load_dataset_csv("twitter")  # or "wine"
+
+# Load tokenizer
+tokenizer = load_tokenizer("twitter")
+```
+
+### 3. Initialize Model with Pretrained Weights
+
+```python
+from src.model import FAMIC, create_embedding_matrix
 import torch
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-weights_path = get_weights_path()
-model = FAMIC.from_pretrained(weights_path, device=device)
 
-results = evaluate_on_datasets(
-    model,
-    dataset_names=["dataset1", "dataset2"],
+# Create embedding matrix
+embedding_matrix = create_embedding_matrix(vocab_length=250000, embedding_dim=300)
+
+# Load model with pretrained weights
+model = FAMIC.from_pretrained_huggingface(
+    dataset_name="twitter",
+    embedding_matrix=embedding_matrix,
     device=device
 )
 ```
 
-Or see `examples/example_usage.py` for a step-by-step example.
+### 4. Create Data Splits and DataLoaders
+
+```python
+from src.datasets import create_dataloaders
+
+train_loader, val_loader, test_loader = create_dataloaders(
+    dataset_name="twitter",
+    text_column="preprocessed_text",
+    label_column="labels",
+    max_len=150,
+    batch_size=100,
+    random_state=2025
+)
+```
+
+### 5. Evaluate Model
+
+```python
+from src.evaluate import evaluate_model
+import torch.nn as nn
+
+criterion = nn.BCEWithLogitsLoss()
+
+test_metrics = evaluate_model(
+    model=model,
+    dataloader=test_loader,
+    device=device,
+    criterion=criterion,
+    use_mask=True,
+    use_shift1=True,
+    use_shift2=True,
+    return_loss=True
+)
+
+print(f"Accuracy: {test_metrics['accuracy']:.4f}")
+print(f"F1-Score: {test_metrics['f1_score']:.4f}")
+```
+
+### 6. Clear Cache (if needed)
+
+If you need to re-download datasets after corrections:
+
+```python
+from src.datasets import clear_dataset_cache
+
+clear_dataset_cache("twitter")
+```
 
 ## Project Structure
 
@@ -98,86 +134,172 @@ Or see `examples/example_usage.py` for a step-by-step example.
 FAMIC/
 ├── src/
 │   ├── __init__.py
-│   ├── model.py              # FAMIC model definition
-│   ├── download_weights.py   # Model weights download utility
-│   ├── datasets.py           # Dataset loading utilities
+│   ├── model.py              # FAMIC model architecture
+│   ├── download_weights.py   # Pretrained weights download utility
+│   ├── datasets.py           # Dataset loading and preprocessing
 │   └── evaluate.py           # Evaluation metrics and utilities
 ├── config/
 │   └── config.yaml           # Configuration file
-├── scripts/
-│   └── evaluate.py           # Main evaluation script
+├── notebooks/
+│   └── famic_tutorial.ipynb  # Complete tutorial notebook
 ├── examples/
 │   └── example_usage.py      # Example usage script
-├── tests/                    # Unit tests
-├── data/                     # Dataset directory (gitignored)
-├── models/                   # Model weights directory (gitignored)
+├── data/                     # Dataset cache directory (gitignored)
+├── models/                   # Model weights cache directory (gitignored)
 ├── results/                  # Evaluation results (gitignored)
 ├── requirements.txt          # Python dependencies
-├── .gitignore
 └── README.md
 ```
+
+## Available Datasets
+
+The repository supports two datasets:
+
+1. **Twitter** (`twitter`): Twitter dataset cleaned in 2024
+   - Repository: `ycy198888/jds_support_files`
+   - File: `datasets/twitter_cleaned2024.csv`
+   - Tokenizer: `tokenizers/twitter_famic_tokenizer.json`
+   - Weights: `FAMIC/twitter_pretrained_weights/`
+
+2. **Wine** (`wine`): Wine dataset with 140k samples cleaned in 2025
+   - Repository: `ycy198888/jds_support_files`
+   - File: `datasets/wine_140k_cleaned2025.csv`
+   - Tokenizer: `tokenizers/wine_famic_tokenizer.json`
+   - Weights: `FAMIC/wine_pretrained_weights/`
+
+## Model Architecture
+
+The FAMIC model consists of the following components:
+
+- **Embeds**: Embedding layer with pre-trained word embeddings
+- **Sentiment_block**: Sentiment analysis block with self-attention
+- **Mask_block**: Learned mask generation block
+- **Shifter_block1**: First shifter block for position-aware features
+- **Shifter_block2**: Second shifter block with relative position encoding
+- **Synthesizer**: Final synthesizer block combining all features
+
+### Model Parameters
+
+- **Embedding Dimension**: 300
+- **Vocabulary Size**: 250,001 (250,000 + 1 for padding)
+- **Max Sequence Length**: 100 (configurable, default 150 for dataloaders)
+- **Number of Attention Heads**: 10
+- **Hidden Dimension**: 300
 
 ## Configuration
 
 ### Model Configuration
 
-Update `config/config.yaml` or modify model parameters directly:
+The model uses the following default parameters (configurable):
 
-```yaml
-model:
-  input_dim: 512      # TODO: Update with actual input dimension
-  hidden_dim: 256     # TODO: Update with actual hidden dimension
-  num_classes: 2      # TODO: Update with actual number of classes
+```python
+EMBEDDING_DIMENSIONS = 300
+VOCAB_LENGTH = 250000
+MAX_LEN = 100
+NUM_HEADS = 10
 ```
 
 ### Dataset Configuration
 
-Configure your datasets in `config/config.yaml`:
+Datasets are configured in `config/config.yaml`:
 
 ```yaml
 datasets:
-  data_root: "data"
-  dataset1:
-    name: "dataset1"
-    path: "data/dataset1"
-    num_classes: 2
-    input_dim: 512
+  default_dataset: "twitter"
+  twitter:
+    repo_id: "ycy198888/jds_support_files"
+    filename: "datasets/twitter_cleaned2024.csv"
+    tokenizer_path: "tokenizers/twitter_famic_tokenizer.json"
+  wine:
+    repo_id: "ycy198888/jds_support_files"
+    filename: "datasets/wine_140k_cleaned2025.csv"
+    tokenizer_path: "tokenizers/wine_famic_tokenizer.json"
 ```
 
 ## Evaluation Metrics
 
-The evaluation script reports:
+The evaluation module provides:
+
 - **Accuracy**: Overall classification accuracy
-- **Precision**: Weighted precision score
-- **Recall**: Weighted recall score
-- **F1-Score**: Weighted F1-score
-- **Confusion Matrix**: Visualized and saved as PNG
+- **Precision**: Precision score for positive class
+- **Recall**: Recall score for positive class
+- **F1-Score**: F1-score for positive class
+- **Confusion Matrix**: Full confusion matrix with visualization
+- **Classification Report**: Per-class metrics and support
+- **Average Loss**: Average loss across all batches
 
-Results are saved in the `results/` directory:
-- `evaluation_summary.txt`: Text summary of all metrics
-- `{dataset_name}_confusion_matrix.png`: Confusion matrix visualization
+Results can be visualized and saved as PNG files.
 
-## TODO Checklist
+## Jupyter Notebook Tutorial
 
-Before using this repository, please complete the following:
+A comprehensive tutorial notebook is available at `notebooks/famic_tutorial.ipynb` that demonstrates:
 
-- [ ] **Model Architecture**: Replace placeholder in `src/model.py` with actual FAMIC architecture
-- [ ] **Model Weights**: Update download URL in `src/download_weights.py` or provide manual download instructions
-- [ ] **Dataset Loading**: Implement actual dataset loading logic in `src/datasets.py` for both datasets
-- [ ] **Configuration**: Update `config/config.yaml` with actual model and dataset parameters
-- [ ] **Class Names**: Add class names to config if you want labeled confusion matrices
-- [ ] **Documentation**: Add dataset-specific documentation and citation information
+1. Environment setup and imports
+2. HuggingFace authentication
+3. Loading datasets and tokenizers
+4. Model initialization
+5. Loading pretrained weights
+6. Creating data splits and DataLoaders
+7. Model evaluation
+8. Visualization of results
+
+## Cache Management
+
+All downloaded files are cached locally:
+
+- **Datasets**: `data/datasets/`
+- **Tokenizers**: `data/tokenizers/`
+- **Model Weights**: `models/{dataset_name}/FAMIC/{dataset_name}_pretrained_weights/`
+
+To clear cache and force re-download:
+
+```python
+from src.datasets import clear_dataset_cache, clear_all_cache
+
+# Clear only dataset cache
+clear_dataset_cache("twitter")
+
+# Clear both dataset and tokenizer cache
+clear_all_cache("twitter")
+```
+
+## API Reference
+
+### Main Functions
+
+#### Dataset Loading
+- `load_dataset_csv(dataset_name, cache_dir=None)`: Load dataset as pandas DataFrame
+- `load_tokenizer(dataset_name, cache_dir=None)`: Load Keras tokenizer
+- `create_train_val_test_split(df, text_column, label_column, test_size=0.1, val_size=0.5, random_state=2025)`: Create data splits
+- `create_dataloaders(...)`: Create PyTorch DataLoaders for train/val/test
+
+#### Model Loading
+- `FAMIC.from_pretrained_huggingface(...)`: Load model with pretrained weights
+- `load_pretrained_weights(...)`: Load weights into existing model blocks
+
+#### Evaluation
+- `evaluate_model(...)`: Comprehensive model evaluation
+- `eval_val_loss(...)`: Simple evaluation returning loss and accuracy
+- `plot_confusion_matrix(...)`: Visualize confusion matrix
+
+#### Cache Management
+- `clear_dataset_cache(dataset_name)`: Clear cached dataset
+- `clear_tokenizer_cache(dataset_name)`: Clear cached tokenizer
+- `clear_all_cache(dataset_name)`: Clear all caches for a dataset
 
 ## Development
 
 ### Adding a New Dataset
 
 1. Update `src/datasets.py`:
-   - Add dataset-specific loading logic in `load_dataset()`
-   - Update `get_dataset_info()` with dataset metadata
+   - Add entry to `DATASET_REGISTRY` with repository info
+   - Ensure tokenizer path is correct
 
 2. Update `config/config.yaml`:
    - Add dataset configuration entry
+
+3. Add pretrained weights to HuggingFace:
+   - Upload weights to `FAMIC/{dataset_name}_pretrained_weights/`
 
 ### Customizing Evaluation
 
@@ -206,4 +328,3 @@ If you use this code in your research, please cite:
 ## Contact
 
 [Add contact information or issue tracker link]
-

@@ -1,109 +1,261 @@
 """
 Model Weights Download Utility
 
-This module handles automatic downloading of FAMIC model weights.
-TODO: Update with actual download URL and authentication if needed.
+This module handles automatic downloading of FAMIC model weights from HuggingFace.
 """
 
 import os
-import urllib.request
-import urllib.error
 from pathlib import Path
-from typing import Optional
-import hashlib
+from typing import Optional, Dict
+import torch
+from huggingface_hub import hf_hub_download
 
 
-def verify_checksum(file_path: str, expected_checksum: Optional[str] = None) -> bool:
-    """
-    Verify file integrity using SHA256 checksum.
-    
-    Args:
-        file_path: Path to the file to verify
-        expected_checksum: Expected SHA256 checksum (optional)
-        
-    Returns:
-        True if checksum matches or if no expected checksum provided
-    """
-    if expected_checksum is None:
-        return True
-    
-    sha256_hash = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    
-    actual_checksum = sha256_hash.hexdigest()
-    return actual_checksum.lower() == expected_checksum.lower()
-
-
-def download_weights(
-    url: str,
-    save_path: str,
-    expected_checksum: Optional[str] = None,
-    force_download: bool = False
-) -> str:
-    """
-    Download model weights from a URL.
-    
-    Args:
-        url: URL to download weights from
-            TODO: Replace with actual model weights URL
-            Example: "https://example.com/models/famic_weights.pth"
-        save_path: Local path to save the weights file
-        expected_checksum: Optional SHA256 checksum to verify file integrity
-        force_download: If True, re-download even if file exists
-        
-    Returns:
-        Path to the downloaded weights file
-        
-    Raises:
-        urllib.error.URLError: If download fails
-        ValueError: If checksum verification fails
-    """
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Check if file already exists
-    if save_path.exists() and not force_download:
-        print(f"Weights file already exists at {save_path}")
-        if expected_checksum:
-            if verify_checksum(str(save_path), expected_checksum):
-                print("Checksum verification passed.")
-                return str(save_path)
-            else:
-                print("Checksum verification failed. Re-downloading...")
-        else:
-            return str(save_path)
-    
-    # Download the file
-    print(f"Downloading weights from {url}...")
-    try:
-        urllib.request.urlretrieve(url, str(save_path))
-        print(f"Downloaded weights to {save_path}")
-    except urllib.error.URLError as e:
-        raise urllib.error.URLError(
-            f"Failed to download weights from {url}: {e}"
-        )
-    
-    # Verify checksum if provided
-    if expected_checksum:
-        if verify_checksum(str(save_path), expected_checksum):
-            print("Checksum verification passed.")
-        else:
-            raise ValueError(
-                f"Checksum verification failed. "
-                f"Expected: {expected_checksum}, "
-                f"Got: {hashlib.sha256(open(save_path, 'rb').read()).hexdigest()}"
-            )
-    
-    return str(save_path)
+# Model weights registry - maps dataset names to their weight file paths
+WEIGHTS_REGISTRY = {
+    "twitter": {
+        "repo_id": "ycy198888/jds_support_files",
+        "base_path": "FAMIC/twitter_pretrained_weights",
+        "version": "v2",
+        "weights": {
+            "embeds": "embedding_weights.pt",
+            "sentiment": "three_block_mb1_{version}.pt",
+            "mask": "three_block_mb2_{version}.pt",
+            "shifter1": "three_block_mb31_{version}.pt",
+            "shifter2": "three_block_mb32_{version}.pt",
+            "synthesizer": "three_block_mb4_{version}.pt"
+        }
+    },
+    "wine": {
+        "repo_id": "ycy198888/jds_support_files",
+        "base_path": "FAMIC/wine_pretrained_weights",
+        "version": "v2",
+        "weights": {
+            "embeds": "embedding_weights.pt",
+            "sentiment": "three_block_mb1_{version}.pt",
+            "mask": "three_block_mb2_{version}.pt",
+            "shifter1": "three_block_mb31_{version}.pt",
+            "shifter2": "three_block_mb32_{version}.pt",
+            "synthesizer": "three_block_mb4_{version}.pt"
+        }
+    }
+}
 
 
 def get_weights_path(
+    dataset_name: str,
+    weight_name: str,
+    cache_dir: Optional[str] = None,
+    version: Optional[str] = None
+) -> Path:
+    """
+    Download and return the path to a model weight file.
+    
+    Args:
+        dataset_name: Name of the dataset ("twitter" or "wine")
+        weight_name: Name of the weight file ("embeds", "sentiment", "mask", 
+                   "shifter1", "shifter2", "synthesizer")
+        cache_dir: Directory to cache downloaded files. Defaults to "models" directory.
+        version: Model version (defaults to "v2" from registry)
+        
+    Returns:
+        Path to the downloaded weight file
+        
+    Raises:
+        ValueError: If dataset_name or weight_name is not in the registry
+    """
+    if dataset_name not in WEIGHTS_REGISTRY:
+        available = ", ".join(WEIGHTS_REGISTRY.keys())
+        raise ValueError(
+            f"Unknown dataset: '{dataset_name}'. "
+            f"Available datasets: {available}"
+        )
+    
+    weights_info = WEIGHTS_REGISTRY[dataset_name]
+    
+    if weight_name not in weights_info["weights"]:
+        available = ", ".join(weights_info["weights"].keys())
+        raise ValueError(
+            f"Unknown weight name: '{weight_name}'. "
+            f"Available weights: {available}"
+        )
+    
+    # Set cache directory
+    if cache_dir is None:
+        cache_dir = Path("models")
+    else:
+        cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create dataset-specific subdirectory
+    dataset_dir = cache_dir / dataset_name
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Get version
+    version = version or weights_info["version"]
+    
+    # Get weight filename (with version substitution)
+    weight_template = weights_info["weights"][weight_name]
+    weight_filename = weight_template.format(version=version)
+    
+    # Construct full path in HuggingFace repo
+    repo_filename = f"{weights_info['base_path']}/{weight_filename}"
+    
+    # Check if file already exists locally
+    local_path = dataset_dir / weight_filename
+    if local_path.exists():
+        print(f"Using cached weight: {local_path}")
+        return local_path
+    
+    # Download from HuggingFace
+    print(f"Downloading {weight_name} weights for '{dataset_name}' dataset...")
+    print(f"  Repository: {weights_info['repo_id']}")
+    print(f"  Repository type: dataset")
+    print(f"  File path: {repo_filename}")
+    
+    try:
+        downloaded_path = hf_hub_download(
+            repo_id=weights_info["repo_id"],
+            filename=repo_filename,
+            repo_type="dataset",  # This is a dataset repository
+            cache_dir=str(cache_dir),
+            local_dir=str(dataset_dir),
+            local_dir_use_symlinks=False,
+            token=os.getenv("HF_TOKEN")  # Use HF_TOKEN environment variable if set
+        )
+        print(f"✓ Weight downloaded to: {downloaded_path}")
+        return Path(downloaded_path)
+    except Exception as e:
+        error_msg = str(e)
+        if "401" in error_msg or "Unauthorized" in error_msg or "Repository Not Found" in error_msg:
+            raise RuntimeError(
+                f"Failed to download weight '{weight_name}' for '{dataset_name}': Authentication required.\n"
+                f"The repository may be private or gated. Please authenticate with HuggingFace:\n\n"
+                f"Option 1: Set environment variable (recommended):\n"
+                f"  export HF_TOKEN=your_huggingface_token\n"
+                f"  (On Windows PowerShell: $env:HF_TOKEN='your_huggingface_token')\n\n"
+                f"Option 2: Use huggingface_hub login:\n"
+                f"  from huggingface_hub import login\n"
+                f"  login(token='your_huggingface_token')\n\n"
+                f"Get your token from: https://huggingface.co/settings/tokens\n"
+                f"Original error: {error_msg}"
+            ) from e
+        else:
+            raise RuntimeError(
+                f"Failed to download weight '{weight_name}' for '{dataset_name}': {error_msg}\n"
+                f"Please check your internet connection and HuggingFace access."
+            ) from e
+
+
+def download_all_weights(
+    dataset_name: str,
+    cache_dir: Optional[str] = None,
+    version: Optional[str] = None
+) -> Dict[str, Path]:
+    """
+    Download all model weights for a dataset.
+    
+    Args:
+        dataset_name: Name of the dataset ("twitter" or "wine")
+        cache_dir: Directory to cache downloaded files
+        version: Model version (defaults to "v2" from registry)
+        
+    Returns:
+        Dictionary mapping weight names to their file paths
+    """
+    weights_info = WEIGHTS_REGISTRY[dataset_name]
+    weight_paths = {}
+    
+    print(f"Downloading all weights for '{dataset_name}' dataset...")
+    print("="*70)
+    
+    for weight_name in weights_info["weights"].keys():
+        weight_paths[weight_name] = get_weights_path(
+            dataset_name=dataset_name,
+            weight_name=weight_name,
+            cache_dir=cache_dir,
+            version=version
+        )
+    
+    print("="*70)
+    print(f"✓ All weights downloaded for '{dataset_name}' dataset")
+    
+    return weight_paths
+
+
+def load_pretrained_weights(
+    model_blocks: Dict,
+    dataset_name: str,
+    cache_dir: Optional[str] = None,
+    version: Optional[str] = None,
+    device: Optional[torch.device] = None
+) -> Dict:
+    """
+    Load pretrained weights into model blocks.
+    
+    Args:
+        model_blocks: Dictionary of model blocks (from initialize_model_blocks)
+        dataset_name: Name of the dataset ("twitter" or "wine")
+        cache_dir: Directory to cache downloaded files
+        version: Model version (defaults to "v2" from registry)
+        device: Device to load weights on (default: cuda if available, else cpu)
+        
+    Returns:
+        Dictionary of model blocks with loaded weights
+    """
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    print(f"Loading pretrained weights for '{dataset_name}' dataset...")
+    print(f"  Device: {device}")
+    print("="*70)
+    
+    # Download all weights
+    weight_paths = download_all_weights(
+        dataset_name=dataset_name,
+        cache_dir=cache_dir,
+        version=version
+    )
+    
+    # Load weights into model blocks
+    print("\nLoading weights into model blocks...")
+    
+    # Map weight names to model block names
+    weight_to_block = {
+        "embeds": "embeds",
+        "sentiment": "sentiment",
+        "mask": "mask",
+        "shifter1": "shifter1",
+        "shifter2": "shifter2",
+        "synthesizer": "synthesizer"
+    }
+    
+    for weight_name, block_name in weight_to_block.items():
+        if block_name in model_blocks:
+            weight_path = weight_paths[weight_name]
+            print(f"  Loading {weight_name} -> {block_name}...")
+            
+            try:
+                state_dict = torch.load(weight_path, map_location=device)
+                model_blocks[block_name].load_state_dict(state_dict)
+                model_blocks[block_name].to(device)
+                print(f"    ✓ Loaded from: {weight_path.name}")
+            except Exception as e:
+                print(f"    ✗ Failed to load {weight_name}: {e}")
+                raise RuntimeError(f"Failed to load weight '{weight_name}': {e}") from e
+    
+    print("="*70)
+    print("✓ All pretrained weights loaded successfully")
+    
+    return model_blocks
+
+
+def get_weights_path_legacy(
     weights_dir: str = "models",
     weights_filename: str = "famic_weights.pth"
 ) -> str:
     """
+    Legacy function for backward compatibility.
     Get the path to model weights, downloading if necessary.
     
     Args:
@@ -115,27 +267,26 @@ def get_weights_path(
     """
     weights_path = Path(weights_dir) / weights_filename
     
-    # TODO: Replace with actual download URL
-    # TODO: Add expected_checksum if available
-    download_url = "https://example.com/models/famic_weights.pth"  # PLACEHOLDER
-    expected_checksum = None  # TODO: Add SHA256 checksum when available
-    
     if not weights_path.exists():
-        print(f"Weights not found at {weights_path}")
-        print("Please update download_weights.py with the actual download URL")
-        print(f"Expected URL: {download_url}")
         raise FileNotFoundError(
-            f"Model weights not found. Please download from: {download_url}\n"
-            f"Or update the download URL in src/download_weights.py"
+            f"Model weights not found at {weights_path}.\n"
+            f"Please use download_all_weights() or load_pretrained_weights() "
+            f"to download weights from HuggingFace."
         )
-        # Uncomment when URL is available:
-        # download_weights(download_url, str(weights_path), expected_checksum)
     
     return str(weights_path)
 
 
 if __name__ == "__main__":
     # Example usage
-    weights_path = get_weights_path()
-    print(f"Model weights available at: {weights_path}")
-
+    print("Model Weights Download Utility")
+    print("="*70)
+    
+    # Example: Download all weights for Twitter dataset
+    try:
+        weight_paths = download_all_weights("twitter")
+        print("\nDownloaded weights:")
+        for name, path in weight_paths.items():
+            print(f"  {name}: {path}")
+    except Exception as e:
+        print(f"Error: {e}")

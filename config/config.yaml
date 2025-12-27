@@ -1,47 +1,71 @@
 # FAMIC Model Configuration
-# TODO: Update all placeholder values with actual model and dataset parameters
 
 # Model configuration
 model:
-  input_dim: 512  # TODO: Set appropriate input dimension
-  hidden_dim: 256  # TODO: Set appropriate hidden dimension
-  num_classes: 2  # TODO: Set appropriate number of classes
-  # Add other model-specific parameters here
+  embedding_dim: 300  # Embedding dimension for word embeddings
+  vocab_length: 250000  # Vocabulary size (250,000 + 1 for padding = 250,001)
+  max_len: 100  # Maximum sequence length for word-level tokenization
+  num_heads: 10  # Number of attention heads
+  hidden_dim: 300  # Hidden dimension (matches embedding dimension)
+  num_classes: 2  # Binary classification
+  n_layers: 2  # Number of layers (for compatibility)
+  max_relative_position_mask: 2  # Max relative position for mask blocks
+  max_relative_position_shift: 5  # Max relative position for shifter blocks
+  pivot: 0.5  # Pivot value
+  drop_prob: 0.5  # Dropout probability
+  digits_dim: 1  # Dimension for digits/auxiliary features
 
 # Model weights configuration
 weights:
-  url: "https://example.com/models/famic_weights.pth"  # TODO: Replace with actual URL
-  checksum: null  # TODO: Add SHA256 checksum when available
-  save_dir: "models"
-  filename: "famic_weights.pth"
+  repo_id: "ycy198888/jds_support_files"  # HuggingFace repository
+  repo_type: "dataset"  # Repository type
+  version: "v2"  # Model version
+  save_dir: "models"  # Local cache directory for weights
 
 # Dataset configuration
 datasets:
-  data_root: "data"
-  dataset1:
-    name: "dataset1"  # TODO: Replace with actual dataset name
-    path: "data/dataset1"  # TODO: Update path
-    num_classes: 2  # TODO: Update
-    input_dim: 512  # TODO: Update
-  dataset2:
-    name: "dataset2"  # TODO: Replace with actual dataset name
-    path: "data/dataset2"  # TODO: Update path
-    num_classes: 2  # TODO: Update
-    input_dim: 512  # TODO: Update
+  data_root: "data"  # Local cache root directory
+  # Available datasets: "twitter" or "wine"
+  default_dataset: "twitter"  # Default dataset to use
+  twitter:
+    name: "twitter"
+    display_name: "Twitter Cleaned 2024"
+    repo_id: "ycy198888/jds_support_files"
+    filename: "datasets/twitter_cleaned2024.csv"
+    tokenizer_path: "tokenizers/twitter_famic_tokenizer.json"
+    description: "Twitter dataset cleaned in 2024"
+    num_classes: 2  # Binary classification
+    text_column: "preprocessed_text"  # Column name for text data
+    label_column: "labels"  # Column name for labels
+  wine:
+    name: "wine"
+    display_name: "Wine 140k Cleaned 2025"
+    repo_id: "ycy198888/jds_support_files"
+    filename: "datasets/wine_140k_cleaned2025.csv"
+    tokenizer_path: "tokenizers/wine_famic_tokenizer.json"
+    description: "Wine dataset with 140k samples cleaned in 2025"
+    num_classes: 2  # Binary classification
+    text_column: "preprocessed_text"  # Column name for text data
+    label_column: "labels"  # Column name for labels
+
+# Data splitting configuration
+data_splitting:
+  test_size: 0.1  # 10% of data for test set
+  val_size: 0.5  # 50% of test set for validation (5% total)
+  random_state: 2025  # Random seed for reproducibility
+  max_len: 150  # Maximum sequence length for padding
+  batch_size: 100  # Batch size for DataLoaders
+  num_workers: 0  # Number of workers for DataLoader (0 for Windows compatibility)
 
 # Evaluation configuration
 evaluation:
-  batch_size: 32
+  batch_size: 100  # Batch size for evaluation
   device: "auto"  # "auto", "cuda", or "cpu"
   save_results: true
   results_dir: "results"
-  class_names: null  # TODO: Add class names if available, e.g., ["Class0", "Class1"]
+  class_names: ["Negative", "Positive"]  # Class names for visualization
+  use_mask: true  # Use learned mask in forward pass
+  use_shift1: true  # Use first shifter in forward pass
+  use_shift2: true  # Use second shifter in forward pass
 
-# Training configuration (if needed for fine-tuning)
-training:
-  learning_rate: 0.001
-  num_epochs: 10
-  batch_size: 32
-  optimizer: "adam"
-  # Add other training parameters as needed
 
