@@ -19,12 +19,15 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
 venv/
 env/
 ENV/
 .venv
+venv.bak/
+env.bak/
 
 # IDE
 .vscode/
@@ -32,48 +35,120 @@ ENV/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+.settings/
 
 # Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb
+.ipynb_checkpoints/
+# Keep tutorial notebook, but ignore checkpoints
+# *.ipynb  # Commented out - we want to track notebooks
 
-# Model weights (large files)
-models/*.pth
-models/*.pt
-models/*.ckpt
-models/*.pkl
+# Model weights (large files) - ignore all model weights
+models/**/*.pth
+models/**/*.pt
+models/**/*.ckpt
+models/**/*.pkl
+models/**/*.h5
+models/**/*.hdf5
 !models/.gitkeep
 
-# Data files (typically large)
-data/
-*.csv
-*.h5
-*.hdf5
-*.npy
-*.npz
+# Data files (typically large) - ignore cached datasets and tokenizers
+data/**/*.csv
+data/**/*.json
+data/**/*.h5
+data/**/*.hdf5
+data/**/*.npy
+data/**/*.npz
+data/**/*.pkl
+data/**/*.pt
+data/**/*.pth
 !data/.gitkeep
 
-# Results and outputs
-results/
-outputs/
-*.png
-*.jpg
-*.pdf
+# Results and outputs - ignore generated results
+results/**/*.png
+results/**/*.jpg
+results/**/*.jpeg
+results/**/*.pdf
+results/**/*.txt
+results/**/*.csv
+results/**/*.json
 !results/.gitkeep
+
+# Notebook-specific cache (ignore data/models in notebooks folder)
+notebooks/data/
+notebooks/models/
+notebooks/results/
+notebooks/.ipynb_checkpoints/
+
+# HuggingFace cache
+.cache/
+huggingface/
+.huggingface/
 
 # Logs
 logs/
 *.log
+*.log.*
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
 # Environment variables
 .env
 .env.local
+.env.*.local
 
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.swp
+*~
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Project-specific
+# Keep example scripts and configs, but ignore large data files
+examples/**/*.csv
+examples/**/*.json
+examples/**/*.pkl
