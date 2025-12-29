@@ -215,18 +215,23 @@ class MultiHeadAttentionLayer_2(nn.Module):
 
         # (B, heads, L, head_dim)
         q = q.view(B, L, self.n_heads, self.head_dim).transpose(1, 2)
+        k = k.view(B, L, self.n_heads, self.head_dim).transpose(1, 2)
+        v = v.view(B, L, self.n_heads, self.head_dim).transpose(1, 2)
 
         scale = self.head_dim ** 0.5
 
-        # Relative position term
+        # Content-based attention term (optional; can be disabled to mimic your original)
+        attn1 = torch.matmul(q, k.transpose(-2, -1))  # (B, heads, L, L)
+
+        # Relative position term (your original main term)
         # Build relative embeddings: (L, L, head_dim)
         r_k = self.relative_position_k(L, L)  # (L, L, head_dim)
 
         # q: (B, heads, L, head_dim)
         # want: (B, heads, L, L) via einsum over head_dim with r_k indexed by (i,j)
-        attn = torch.einsum("bhid,ijd->bhij", q, r_k)
+        attn2 = torch.einsum("bhid,ijd->bhij", q, r_k)
 
-        attn = attn / scale
+        attn = (attn1 + attn2) / scale
 
         if key_padding_mask is not None:
             # mask keys (last dim): pad positions -> -inf
@@ -239,10 +244,13 @@ class MultiHeadAttentionLayer_2(nn.Module):
         # Relative value term
         r_v = self.relative_position_v(L, L)  # (L, L, head_dim)
 
+        # weight1 = attn @ v
+        weight1 = torch.matmul(attn, v)  # (B, heads, L, head_dim)
+
         # weight2 using relative values: einsum attn(b,h,i,j)*r_v(i,j,d)->(b,h,i,d)
         weight2 = torch.einsum("bhij,ijd->bhid", attn, r_v)
 
-        out = weight2  # (B, heads, L, head_dim)
+        out =  weight2  # (B, heads, L, head_dim)
         out = out.transpose(1, 2).contiguous().view(B, L, D)  # (B, L, D)
         return self.fc_o(out)
 
@@ -359,7 +367,6 @@ class Sentiment_block(nn.Module):
         self.relu = nn.ReLU()
 
         self.layer_norm = nn.LayerNorm(embedding_dim)
-    
     def forward(self, embeds, mask_1, mask=None, digits=None):
         """
         embeds: (B, L, D)
@@ -397,7 +404,7 @@ class Sentiment_block(nn.Module):
         # t = t + p12[:, None, None] 
         # embeds = t
         embeds = self.ff(embeds)
-        embeds = self.add_p12(embeds, p12)
+       # embeds = self.add_p12(embeds, p12)
         embeds = self.dropout10(embeds)
 
         out = self.fc2(embeds)        # (B, L, D) if tiedLinear is square
@@ -696,7 +703,7 @@ def initialize_model_blocks(
     hidden_dim: int = EMBEDDING_DIMENSIONS,
     n_layers: int = N_LAYERS,
     max_relative_position_mask: int = 2,
-    max_relative_position_shift: int = 5,
+    max_relative_position_shift: int = 3,
     pivot: float = PIVOT,
     num_heads: int = NUM_HEADS,
     drop_prob: float = 0.5,
@@ -763,7 +770,7 @@ class FAMIC(nn.Module):
         hidden_dim: int = EMBEDDING_DIMENSIONS,
         n_layers: int = N_LAYERS,
         max_relative_position_mask: int = 2,
-        max_relative_position_shift: int = 5,
+        max_relative_position_shift: int = 3,
         pivot: float = PIVOT,
         num_heads: int = NUM_HEADS,
         drop_prob: float = 0.5,
