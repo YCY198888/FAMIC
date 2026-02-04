@@ -250,7 +250,7 @@ class MultiHeadAttentionLayer_2(nn.Module):
         # weight2 using relative values: einsum attn(b,h,i,j)*r_v(i,j,d)->(b,h,i,d)
         weight2 = torch.einsum("bhij,ijd->bhid", attn, r_v)
 
-        out =  weight2  # (B, heads, L, head_dim)
+        out = weight2  # (B, heads, L, head_dim)
         out = out.transpose(1, 2).contiguous().view(B, L, D)  # (B, L, D)
         return self.fc_o(out)
 

@@ -80,6 +80,7 @@ notebooks/data/
 notebooks/models/
 notebooks/results/
 notebooks/.ipynb_checkpoints/
+notebooks/FAMIC/
 
 # HuggingFace cache
 .cache/

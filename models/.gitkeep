@@ -1,3 +1,0 @@
-# This file ensures the models directory is tracked by git
-# Model weights files (.pth, .pt, .ckpt) are gitignored
-
