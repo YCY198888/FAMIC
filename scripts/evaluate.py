@@ -77,8 +77,8 @@ def main():
         print(f"\nLoading model with pretrained weights for '{dataset_name}'...")
         try:
             model = FAMIC.from_pretrained_huggingface(
-                dataset_name=dataset_name,
-                embedding_matrix=embedding_matrix,
+                dataset_name,
+                embedding_matrix,
                 cache_dir=config['weights']['save_dir'],
                 version=config['weights']['version'],
                 device=device,

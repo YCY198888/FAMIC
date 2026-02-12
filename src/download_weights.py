@@ -123,7 +123,7 @@ def get_weights_path(
             local_dir_use_symlinks=False,
             token=os.getenv("HF_TOKEN")  # Use HF_TOKEN environment variable if set
         )
-        print(f"✓ Weight downloaded to: {downloaded_path}")
+        print(f"[OK] Weight downloaded to: {downloaded_path}")
         return Path(downloaded_path)
     except Exception as e:
         error_msg = str(e)
@@ -178,7 +178,7 @@ def download_all_weights(
         )
     
     print("="*70)
-    print(f"✓ All weights downloaded for '{dataset_name}' dataset")
+    print(f"[OK] All weights downloaded for '{dataset_name}' dataset")
     
     return weight_paths
 
@@ -239,13 +239,13 @@ def load_pretrained_weights(
                 state_dict = torch.load(weight_path, map_location=device)
                 model_blocks[block_name].load_state_dict(state_dict)
                 model_blocks[block_name].to(device)
-                print(f"    ✓ Loaded from: {weight_path.name}")
+                print(f"    [OK] Loaded from: {weight_path.name}")
             except Exception as e:
-                print(f"    ✗ Failed to load {weight_name}: {e}")
+                print(f"    [ERROR] Failed to load {weight_name}: {e}")
                 raise RuntimeError(f"Failed to load weight '{weight_name}': {e}") from e
     
     print("="*70)
-    print("✓ All pretrained weights loaded successfully")
+    print("[OK] All pretrained weights loaded successfully")
     
     return model_blocks
 

@@ -33,9 +33,9 @@ def authenticate_huggingface(token: Optional[str] = None) -> None:
     """
     if token:
         login(token=token)
-        print("✓ Authenticated with HuggingFace using provided token")
+        print("[OK] Authenticated with HuggingFace using provided token")
     elif os.getenv("HF_TOKEN"):
-        print("✓ Using HF_TOKEN environment variable for authentication")
+        print("[OK] Using HF_TOKEN environment variable for authentication")
     else:
         print("Attempting to login to HuggingFace...")
         print("If you have a token, you can also set it as an environment variable:")
@@ -43,9 +43,9 @@ def authenticate_huggingface(token: Optional[str] = None) -> None:
         print("  $env:HF_TOKEN='your_token'  # Windows PowerShell")
         try:
             login()
-            print("✓ Authenticated with HuggingFace")
+            print("[OK] Authenticated with HuggingFace")
         except Exception as e:
-            print(f"⚠ Authentication failed: {e}")
+            print(f"[WARNING] Authentication failed: {e}")
             print("You may need to authenticate manually or set HF_TOKEN environment variable")
 
 
@@ -127,7 +127,7 @@ def get_dataset_path(dataset_name: str, cache_dir: Optional[str] = None) -> Path
             local_dir_use_symlinks=False,
             token=os.getenv("HF_TOKEN")  # Use HF_TOKEN environment variable if set
         )
-        print(f"✓ Dataset downloaded to: {downloaded_path}")
+        print(f"[OK] Dataset downloaded to: {downloaded_path}")
         return Path(downloaded_path)
     except Exception as e:
         error_msg = str(e)
@@ -212,7 +212,7 @@ def get_tokenizer_path(dataset_name: str, cache_dir: Optional[str] = None) -> Pa
             local_dir_use_symlinks=False,
             token=os.getenv("HF_TOKEN")  # Use HF_TOKEN environment variable if set
         )
-        print(f"✓ Tokenizer downloaded to: {downloaded_path}")
+        print(f"[OK] Tokenizer downloaded to: {downloaded_path}")
         return Path(downloaded_path)
     except Exception as e:
         error_msg = str(e)
@@ -261,7 +261,7 @@ def load_tokenizer(dataset_name: str, cache_dir: Optional[str] = None):
             tokenizer_json = f.read()
         
         tokenizer = tokenizer_from_json(tokenizer_json)
-        print(f"✓ Tokenizer loaded successfully")
+        print(f"[OK] Tokenizer loaded successfully")
         return tokenizer
     except Exception as e:
         raise RuntimeError(
@@ -310,13 +310,13 @@ def clear_dataset_cache(dataset_name: str, cache_dir: Optional[str] = None) -> b
     # Remove from new location
     if local_path.exists():
         local_path.unlink()
-        print(f"✓ Removed cached dataset: {local_path}")
+        print(f"[OK] Removed cached dataset: {local_path}")
         cache_cleared = True
     
     # Remove from old location (backward compatibility)
     if old_local_path.exists():
         old_local_path.unlink()
-        print(f"✓ Removed cached dataset (old location): {old_local_path}")
+        print(f"[OK] Removed cached dataset (old location): {old_local_path}")
         cache_cleared = True
     
     if not cache_cleared:
@@ -359,7 +359,7 @@ def clear_tokenizer_cache(dataset_name: str, cache_dir: Optional[str] = None) ->
     
     if tokenizer_path.exists():
         tokenizer_path.unlink()
-        print(f"✓ Removed cached tokenizer: {tokenizer_path}")
+        print(f"[OK] Removed cached tokenizer: {tokenizer_path}")
         return True
     else:
         print(f"No cached tokenizer found for '{dataset_name}'")
@@ -399,16 +399,16 @@ def clear_all_cache(dataset_name: str, cache_dir: Optional[str] = None, clear_hf
             
             if revisions_to_delete:
                 delete_revisions(revisions_to_delete)
-                print(f"✓ Cleared HuggingFace internal cache for {repo_id}")
+                print(f"[OK] Cleared HuggingFace internal cache for {repo_id}")
                 result['hf_cache'] = True
             else:
                 result['hf_cache'] = False
         except Exception as e:
-            print(f"⚠ Could not clear HuggingFace cache: {e}")
+            print(f"[WARNING] Could not clear HuggingFace cache: {e}")
             result['hf_cache'] = False
     
     if result['dataset'] or result['tokenizer']:
-        print(f"\n✓ Cache cleared for '{dataset_name}'. Next load will download fresh data.")
+        print(f"\n[OK] Cache cleared for '{dataset_name}'. Next load will download fresh data.")
     else:
         print(f"\nNo cache found for '{dataset_name}'")
     
@@ -431,7 +431,15 @@ def load_dataset_csv(dataset_name: str, cache_dir: Optional[str] = None, **kwarg
     print(f"Loading dataset from: {dataset_path}")
     
     df = pd.read_csv(dataset_path, **kwargs)
-    print(f"✓ Dataset loaded: {len(df)} rows, {len(df.columns)} columns")
+    
+    # Ensure labels column is numeric if it exists
+    if 'labels' in df.columns:
+        df['labels'] = pd.to_numeric(df['labels'], errors='coerce')
+        # Drop rows where labels couldn't be converted
+        df = df.dropna(subset=['labels'])
+        df['labels'] = df['labels'].astype(int)
+    
+    print(f"[OK] Dataset loaded: {len(df)} rows, {len(df.columns)} columns")
     
     return df
 
@@ -504,7 +512,7 @@ def print_dataset_statistics(dataset_name: str, df: Optional[pd.DataFrame] = Non
         print(f"  {i:2d}. {col:30s} ({dtype:15s}) - Missing: {missing:,} ({missing_pct:.2f}%)")
     
     if stats['duplicate_rows'] > 0:
-        print(f"\n⚠ Warning: {stats['duplicate_rows']:,} duplicate rows found")
+        print(f"\n[WARNING] Warning: {stats['duplicate_rows']:,} duplicate rows found")
     
     print("="*70 + "\n")
 
@@ -831,7 +839,7 @@ def create_dataloaders(
         num_workers=num_workers
     )
     
-    print(f"\n✓ DataLoaders created:")
+    print(f"\n[OK] DataLoaders created:")
     print(f"  Train batches: {len(train_loader)}")
     print(f"  Val batches: {len(val_loader)}")
     print(f"  Test batches: {len(test_loader)}")
@@ -969,7 +977,7 @@ if __name__ == "__main__":
             print(f"\nLoading tokenizer for '{dataset_name}' dataset...")
             tokenizer = load_tokenizer(dataset_name)
             vocab_size = len(tokenizer.word_index) if hasattr(tokenizer, 'word_index') else 'N/A'
-            print(f"✓ Tokenizer loaded successfully (vocabulary size: {vocab_size})")
+            print(f"[OK] Tokenizer loaded successfully (vocabulary size: {vocab_size})")
         except Exception as e:
             print(f"Error loading tokenizer for {dataset_name}: {e}")
 

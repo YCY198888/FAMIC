@@ -31,8 +31,8 @@ def evaluate_dataset(dataset_name: str, device: torch.device, embedding_matrix: 
     print(f"\nStep 1: Loading model with pretrained weights for '{dataset_name}'...")
     try:
         model = FAMIC.from_pretrained_huggingface(
-            dataset_name=dataset_name,
-            embedding_matrix=embedding_matrix,
+            dataset_name,
+            embedding_matrix,
             cache_dir="models",
             version="v2",
             device=device,
@@ -45,9 +45,9 @@ def evaluate_dataset(dataset_name: str, device: torch.device, embedding_matrix: 
             drop_prob=0.5,
             digits_dim=1
         )
-        print("✓ Model loaded with pretrained weights\n")
+        print("[OK] Model loaded with pretrained weights\n")
     except Exception as e:
-        print(f"✗ Error loading model: {e}\n")
+        print(f"[ERROR] Error loading model: {e}\n")
         print("Please check that:")
         print("  1. You have internet connection to download weights from HuggingFace")
         print("  2. The dataset name is correct ('twitter' or 'wine')")
@@ -64,18 +64,29 @@ def evaluate_dataset(dataset_name: str, device: torch.device, embedding_matrix: 
     except Exception as e:
         print(f"  ⚠ Warning: Could not get dataset info: {e}")
     
-    # Load test dataset
+    # Load test dataset using create_dataloaders
     try:
-        test_loader = load_dataset(
-            dataset_name,
-            data_root="data",
-            split="test",
+        from src.datasets import create_dataloaders
+        
+        # Get dataset-specific column names
+        text_column = "preprocessed_text"  # Default column name
+        label_column = "labels"  # Default column name
+        
+        # Create dataloaders (we only need test_loader)
+        _, _, test_loader = create_dataloaders(
+            dataset_name=dataset_name,
+            text_column=text_column,
+            label_column=label_column,
+            max_len=150,
             batch_size=32,
-            shuffle=False
+            test_size=0.1,
+            val_size=0.5,
+            random_state=2025,
+            num_workers=0
         )
-        print("✓ Dataset loaded\n")
+        print("[OK] Dataset loaded\n")
     except Exception as e:
-        print(f"✗ Error loading dataset: {e}\n")
+        print(f"[ERROR] Error loading dataset: {e}\n")
         print("Please check that:")
         print("  1. You have internet connection to download dataset from HuggingFace")
         print("  2. The dataset name is correct ('twitter' or 'wine')")
@@ -93,9 +104,9 @@ def evaluate_dataset(dataset_name: str, device: torch.device, embedding_matrix: 
             use_shift2=True,
             class_names=["Negative", "Positive"]
         )
-        print("✓ Evaluation complete\n")
+        print("[OK] Evaluation complete\n")
     except Exception as e:
-        print(f"✗ Error during evaluation: {e}\n")
+        print(f"[ERROR] Error during evaluation: {e}\n")
         import traceback
         traceback.print_exc()
         return None
@@ -112,9 +123,9 @@ def evaluate_dataset(dataset_name: str, device: torch.device, embedding_matrix: 
             save_path=f"results/confusion_matrix_{dataset_name}.png",
             title=f"Confusion Matrix - {dataset_name}"
         )
-        print("✓ Confusion matrix saved\n")
+        print("[OK] Confusion matrix saved\n")
     except Exception as e:
-        print(f"⚠ Warning: Could not save confusion matrix: {e}\n")
+        print(f"[WARNING] Could not save confusion matrix: {e}\n")
     
     return metrics
 
@@ -135,10 +146,10 @@ def main():
         vocab_length=VOCAB_LENGTH,
         embedding_dim=EMBEDDING_DIMENSIONS
     )
-    print(f"✓ Embedding matrix created: {embedding_matrix.shape}\n")
+    print(f"[OK] Embedding matrix created: {embedding_matrix.shape}\n")
     
-    # Evaluate on both datasets
-    datasets = ["wine", "twitter"]
+    # Evaluate on datasets (wine first, then twitter)
+    datasets = ["wine"]  # Start with wine only for faster testing
     all_results = {}
     
     for dataset_name in datasets:
