@@ -130,6 +130,82 @@ from src.datasets import clear_dataset_cache
 clear_dataset_cache("twitter")
 ```
 
+## Reproducing Results
+
+### Expected Performance
+
+| Dataset | Accuracy | Precision | Recall | F1-Score | Loss |
+|---------|----------|-----------|--------|----------|------|
+| **Wine** (140K reviews) | 89.01% | 84.60% | 83.07% | 83.83% | 0.2549 |
+| **Twitter** (1.6M tweets) | 83.76% | 83.12% | 84.72% | 83.91% | 0.3572 |
+
+### Option 1: Run the Example Script
+
+The fastest way to verify performance on both datasets:
+
+```bash
+python examples/example_usage.py
+```
+
+This will automatically download datasets, tokenizers, and pretrained weights from HuggingFace, then evaluate and print metrics for each dataset.
+
+### Option 2: Run the Evaluation Script
+
+Use the configuration-based evaluation script:
+
+```bash
+python scripts/evaluate.py
+```
+
+This reads settings from `config/config.yaml` and evaluates on all configured datasets.
+
+### Option 3: Jupyter Notebook (Recommended for Reviewers)
+
+For a step-by-step walkthrough with explanations:
+
+- **Local**: Open and run `notebooks/famic_tutorial.ipynb`
+- **Google Colab**: Open `notebooks/famic_tutorial_colab.ipynb` — it automatically clones the repo and installs dependencies
+
+Both notebooks load the Wine dataset, download pretrained weights, and run full evaluation with detailed metrics and confusion matrices.
+
+### Option 4: Minimal Python Script
+
+```python
+import torch
+from src.model import FAMIC, create_embedding_matrix, EMBEDDING_DIMENSIONS, VOCAB_LENGTH, NUM_HEADS
+from src.datasets import create_dataloaders
+from src.evaluate import evaluate_model
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Create embedding matrix
+embedding_matrix = create_embedding_matrix(vocab_length=VOCAB_LENGTH, embedding_dim=EMBEDDING_DIMENSIONS)
+
+# Load pretrained model (choose "wine" or "twitter")
+model = FAMIC.from_pretrained_huggingface(
+    "wine", embedding_matrix, cache_dir="models", version="v2", device=device,
+    hidden_dim=EMBEDDING_DIMENSIONS, n_layers=2, max_relative_position_mask=2,
+    max_relative_position_shift=3, pivot=0.5, num_heads=NUM_HEADS, drop_prob=0.5, digits_dim=1
+)
+
+# Create test dataloader
+_, _, test_loader = create_dataloaders(
+    dataset_name="wine", text_column="preprocessed_text", label_column="labels",
+    max_len=150, batch_size=32, test_size=0.1, val_size=0.5, random_state=2025, num_workers=0
+)
+
+# Evaluate
+metrics = evaluate_model(
+    model, test_loader, device=device,
+    use_mask=True, use_shift1=True, use_shift2=True,
+    class_names=["Negative", "Positive"]
+)
+
+print(f"Accuracy: {metrics['accuracy']:.4f}, F1: {metrics['f1_score']:.4f}")
+```
+
+> **Note**: All datasets, tokenizers, and model weights are downloaded automatically from HuggingFace on first run and cached locally. No authentication is required.
+
 ## Project Structure
 
 ```
