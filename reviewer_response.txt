@@ -1,0 +1,34 @@
+Response to Reproducibility Review
+====================================
+
+Dear Reviewer,
+
+Thank you for flagging the reproducibility issues. We have addressed all reported concerns.
+
+The code was originally tested and verified using the Google Colab notebook
+(famic_tutorial_colab.ipynb), which provides a stable and consistent environment for
+reproducing results. We expected reviewers to use that notebook for the reproducibility
+check. The issues encountered in the local notebook and example scripts have now been
+fixed in this commit.
+
+Issues Fixed
+------------------------------------
+
+1. Parameter shape mismatch in famic_tutorial: max_relative_position_shift was set to 5
+   but pretrained weights were saved with 3. Updated to 3 in config, model, and notebooks.
+
+2. Missing positional argument (embedding_matrix) in example_usage.py: Updated all calls
+   to FAMIC.from_pretrained_huggingface() to pass the required arguments correctly.
+
+Both notebooks and all scripts have been tested end-to-end and run without errors.
+
+No files are attached because the complete codebase is publicly available at:
+
+   https://github.com/YCY198888/FAMIC
+
+To reproduce: clone the repo, install requirements, and run any of the following:
+   - python examples/example_usage.py
+   - notebooks/famic_tutorial.ipynb (local) or famic_tutorial_colab.ipynb (Colab)
+
+Best regards,
+Chenyu Yang
